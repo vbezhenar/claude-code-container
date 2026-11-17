@@ -22,7 +22,7 @@ claude_code_podman_args=(
   --volume="$PWD/.claude-code-container:$PWD/.claude-code-container:ro"
   --volume='claude-code-config:/home/claude/.claude'
   --volume="$HOME/.config/git:/home/claude/.config/git:ro"
-  --userns=keep-id:uid=1000,gid=1000
+  --userns='keep-id:uid=1000,gid=1000'
   --workdir="$PWD"
 )
 
@@ -31,6 +31,7 @@ if [ ! -e '.claude-code-container' ]; then
 fi
 
 if [ -e '.claude-code-container/config' ]; then
+  # shellcheck source=/dev/null
   source '.claude-code-container/config'
 fi
 

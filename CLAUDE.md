@@ -20,9 +20,10 @@ or in the launcher blocks all sessions until it is fixed on the host.
 
 ## Checking changes
 
-- `bash -n claude-code && shellcheck claude-code`. ShellCheck reports two
-  expected false positives: SC2054 for the comma in
-  `--userns=keep-id:uid=1000,gid=1000` and SC1091 for the sourced config.
+- `bash -n claude-code && shellcheck claude-code` prints nothing and exits 0.
+  The `# shellcheck source=/dev/null` directive above the `source` line is
+  there because the config belongs to whichever project the launcher runs in,
+  so ShellCheck has no file to follow.
 - Launcher logic: put stub `podman` and `timedatectl` executables first on
   `PATH` that print their arguments (the `podman` stub has to write an id to
   the `--iidfile` path), then run the launcher in a scratch project directory
