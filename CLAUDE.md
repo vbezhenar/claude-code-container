@@ -6,9 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A personal tool that runs Claude Code inside a disposable rootless Podman
 container. `claude-code` is the launcher, run on the host from a project's
-root. `claude-code-base/` is the image every session starts from. The launcher
-resolves its own real location to find the image directories, so it is meant
-to be symlinked into `PATH`.
+root. `claude-code-base/` is the image every session starts from, and
+`claude-code-base-java/` is an intermediate base for Java projects. The
+launcher resolves its own real location to find the image directories, so it
+is meant to be symlinked into `PATH`.
 
 Sessions that work on this repository run inside the container it produces.
 Nothing can be exercised from inside: there is no Podman, and changes to the
@@ -33,8 +34,11 @@ or in the launcher blocks all sessions until it is fixed on the host.
   `copy` heredocs, so the files they write and the resulting entrypoint can be
   inspected with `buildah from` and `buildah mount`. `run` steps cannot
   execute in the nested container; run their shell body directly instead.
-- Launching from `claude-code-base/` uses the `config` there, which replaces
-  the entrypoint with `bash`: a debug shell in the base image.
+- Launching from `claude-code-base/` or `claude-code-base-java/` uses the
+  `config` there, which replaces the entrypoint with `bash`: a debug shell in
+  that image. The Java directory is launched as a project on its own base,
+  and its `.claude-code-image/Containerfile` adds Temurin 21, so the shell
+  has a working `mvn`.
 
 ## What a launch runs
 
@@ -79,11 +83,24 @@ or in the launcher blocks all sessions until it is fixed on the host.
   instruction in a Containerfile cannot name a volume, so with `--rm` it would
   be empty on every launch. A mount point that does not exist in the image is
   created owned by root, which is why the base image pre-creates `~/.claude`
-  and `~/.config` for uid 1000; do the same for any new mount point in the
-  home directory.
+  and `~/.config` for uid 1000 and the Java base `~/.m2`; do the same for any
+  new mount point in the home directory.
 - **Project image untagged by default.** It is run by the id from
   `--iidfile`, so no naming scheme is needed. The cost is that
   `podman image prune` removes it and the next launch rebuilds it.
+- **No JDK in the Java base.** It adds the Adoptium repository, the packages
+  that `temurin-21-jdk` depends on, and Maven. A project installs the
+  `temurin-<version>-jdk` it needs in its own Containerfile, as
+  `claude-code-base-java/.claude-code-image/Containerfile` does; with the
+  dependencies already in the base, that step adds only the JDK package.
+- **Maven is pinned on `dlcdn.apache.org` and the build is meant to break.**
+  dlcdn keeps only current releases, so once a newer Maven replaces the
+  pinned one the step fails with a 404 and Java projects stop launching until
+  `v` is bumped. That failure is the update notice: do not switch to
+  `archive.apache.org` or let the cached tarball skip the request. With the
+  tarball in the `maven-cache` mount the step sends a `HEAD` request for the
+  same URL instead of downloading again. The check runs when the layer is
+  rebuilt, which is after each rebuild of the base.
 
 ## Security model
 
@@ -106,8 +123,9 @@ namespaces and are easy to get wrong.
 - `.claude-code-image/` is deliberately neither created nor mounted by the
   launcher and stays writable, so the agent can maintain the Containerfile.
   Its build steps run in containers. The accepted cost is the weaker
-  build-time isolation and that the shared apt cache mounts are writable from
-  any project's Containerfile.
+  build-time isolation and that the shared cache mounts are writable from any
+  project's Containerfile: the apt caches and `maven-cache`, whose tarball
+  the Java base unpacks without a checksum.
 - Whether a project image is built at all is decided by
   `claude_code_podman_image_base` in `config`, which the agent cannot change.
   The two refusal checks exist so that a Containerfile is never silently

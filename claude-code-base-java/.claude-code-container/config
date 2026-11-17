@@ -1,0 +1,2 @@
+claude_code_podman_args+=('--entrypoint=bash')
+claude_code_podman_image_base='claude-code-base-java'

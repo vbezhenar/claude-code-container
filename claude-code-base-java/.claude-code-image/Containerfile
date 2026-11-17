@@ -1,0 +1,17 @@
+arg claude_code_podman_image_base
+from localhost/${claude_code_podman_image_base}:latest
+
+run \
+  --mount=type=cache,id=trixie-apt-cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,id=trixie-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+  <<'eof'
+# install project packages
+set -o errexit
+
+apt-get update
+
+DEBIAN_FRONTEND=noninteractive \
+apt-get --no-install-recommends --assume-yes install \
+  'temurin-21-jdk'
+
+eof
