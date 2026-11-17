@@ -26,8 +26,11 @@ or in the launcher blocks all sessions until it is fixed on the host.
   so ShellCheck has no file to follow.
 - Launcher logic: put stub `podman` and `timedatectl` executables first on
   `PATH` that print their arguments (the `podman` stub has to write an id to
-  the `--iidfile` path), then run the launcher in a scratch project directory
-  for each combination of `config` contents and image directory.
+  the `--iidfile` path), then run a copy of the launcher, placed in a scratch
+  directory, in a scratch project directory for each combination of `config`
+  contents and image directory. Do not run the launcher of this checkout with
+  stubs: a stub pull that succeeds touches the real `.pull-stamp`, and the
+  host then skips the Debian pull for a day.
 - Containerfile syntax: `buildah` and `netavark` come from this project's
   image (`.claude-code-image/Containerfile`); install them with apt if the
   session runs on the plain base. `sudo buildah --storage-driver=vfs build`
@@ -67,6 +70,8 @@ or in the launcher blocks all sessions until it is fixed on the host.
 - An intermediate base image is a directory next to the launcher that is named
   after the base (for example `claude-code-base-java/`) and whose
   Containerfile starts from `localhost/claude-code-base:latest`.
+- The launcher pulls `docker.io/library/debian:trixie` by name. It has to be
+  the image in the `from` line of `claude-code-base/Containerfile`.
 
 ## Design decisions
 
@@ -77,6 +82,16 @@ or in the launcher blocks all sessions until it is fixed on the host.
 - **`--cache-ttl=24h` on the base build only.** This is how Claude Code itself
   gets updated: the base rebuilds at most once a day, and the images built on
   it rebuild because their parent changed.
+- **The launcher pulls Debian itself, at most once a day.** `podman image
+  build` can check the registry on every build (`--pull=always` or `newer`)
+  or never once the image is local (`missing`), and Podman does not store
+  the date of the last check with the image. So the launcher runs
+  `podman image pull` when `.pull-stamp` in its own directory is missing or
+  older than 24 hours, and touches the file after a successful pull; the
+  file is in `.gitignore`. The base build has no `--pull` option, so
+  Podman's default `missing` applies and the build does not contact the
+  registry. A new Debian image rebuilds every layer whatever the cache age,
+  because the parent changed.
 - **Project mounted at its host path.** Session history in the shared
   `~/.claude` volume is keyed by path, so `--continue` works across
   containers.
@@ -143,8 +158,9 @@ Do not fix these unprompted.
   `sub/.claude-code-container/config`, which is sourced if the launcher is
   ever run from `sub/`, and launching from a parent directory exposes the
   configs of the projects below it.
-- A failed base build (no network, or a registry or apt failure once the cache
-  has expired) aborts the launch. There is no fallback to the existing image.
+- A failed Debian pull, attempted when the last one is more than a day old, or
+  a failed base build (no network, or an apt failure once the cache has
+  expired) aborts the launch. There is no fallback to the existing image.
 - The check for a Containerfile without a base looks only for `Containerfile`,
   not `Dockerfile`, its message does not say where to set the variable, and
   both checks run after the base build.
