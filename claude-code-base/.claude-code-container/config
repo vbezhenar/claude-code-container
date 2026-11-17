@@ -1,0 +1,1 @@
+claude_code_podman_args+=('--entrypoint=bash')

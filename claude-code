@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o nounset
+
+script_path=$(readlink --canonicalize-existing "${0}")
+script_dir=$(dirname "${script_path}")
+
+podman image build \
+  --cache-ttl=24h \
+  --pull=always \
+  --tag='localhost/claude-code-base:latest' \
+  "${script_dir}/claude-code-base"
+
+tz=$(timedatectl show --property=Timezone --value)
+
+claude_code_podman_args=(
+  --env='TERM'
+  --env="TZ=${tz}"
+  --init
+  --interactive --rm --tty
+  --volume="$PWD:$PWD"
+  --volume="$PWD/.claude-code-container:$PWD/.claude-code-container:ro"
+  --volume='claude-code-config:/home/claude/.claude'
+  --volume="$HOME/.config/git:/home/claude/.config/git:ro"
+  --userns=keep-id:uid=1000,gid=1000
+  --workdir="$PWD"
+)
+
+if [ ! -e '.claude-code-container' ]; then
+  mkdir '.claude-code-container'
+fi
+
+if [ -e '.claude-code-container/config' ]; then
+  source '.claude-code-container/config'
+fi
+
+if [ -n "${claude_code_podman_image_base:-}" ]; then
+  if [ ! -e '.claude-code-image/Containerfile' ]; then
+    echo >&2 '.claude-code-image/Containerfile does not exist'
+    exit 1
+  fi
+  if [ "${claude_code_podman_image_base}" != 'claude-code-base' ]; then
+    podman image build \
+      --tag="localhost/${claude_code_podman_image_base}:latest" \
+      "${script_dir}/${claude_code_podman_image_base}"
+  fi
+  if [ -n "${claude_code_podman_image:-}" ]; then
+    image="localhost/${claude_code_podman_image}:latest"
+    podman image build \
+      --build-arg="claude_code_podman_image_base=${claude_code_podman_image_base}" \
+      --tag="${image}" \
+      '.claude-code-image'
+  else
+    iidfile=$(mktemp)
+    trap 'rm -f "${iidfile}"' EXIT
+    podman image build \
+      --build-arg="claude_code_podman_image_base=${claude_code_podman_image_base}" \
+      --iidfile="${iidfile}" \
+      '.claude-code-image'
+    image=$(cat "${iidfile}")
+    rm "${iidfile}"
+  fi
+else
+  if [ -e '.claude-code-image/Containerfile' ]; then
+    echo >&2 'claude_code_podman_image_base is not set'
+    exit 1
+  fi
+  if [ -n "${claude_code_podman_image:-}" ]; then
+    image="localhost/${claude_code_podman_image}:latest"
+  else
+    image='localhost/claude-code-base:latest'
+  fi
+fi
+
+exec podman run "${claude_code_podman_args[@]}" "${image}" "$@"

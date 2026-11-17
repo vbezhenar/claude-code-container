@@ -1,0 +1,227 @@
+from docker.io/library/debian:trixie
+
+run \
+  --mount=type=cache,id=trixie-apt-cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,id=trixie-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+  <<'eof'
+# install base packages
+set -o errexit
+
+rm '/etc/apt/apt.conf.d/docker-clean'
+
+apt-get update
+
+DEBIAN_FRONTEND=noninteractive \
+apt-get --no-install-recommends --assume-yes install \
+  'bind9-dnsutils' \
+  'build-essential' \
+  'ca-certificates' \
+  'curl' \
+  'file' \
+  'git' \
+  'iproute2' \
+  'jq' \
+  'openssh-client' \
+  'pkgconf' \
+  'poppler-utils' \
+  'procps' \
+  'psmisc' \
+  'python3-dev' \
+  'python3-pip' \
+  'python3-venv' \
+  'ripgrep' \
+  'rsync' \
+  'shellcheck' \
+  'sqlite3' \
+  'strace' \
+  'sudo' \
+  'tree' \
+  'unzip' \
+  'xxd' \
+  'xz-utils' \
+  'zip'
+
+eof
+
+copy <<'eof' '/etc/apt/keyrings/claude-code.asc'
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mQINBGnK73ABEACnbytJXkjweYrwIr0aLEFRlH+C0nF44KxFc7gQmJ6PjSPMGZAD
+dxZcaixU7zZl8WxEpVO0wLmIH8cf2zGOdyuZg1Yaugk1vHb2b8WBhAGCQJdPgB8W
+XquedepEYtk56uP/gCoTjJDUZluEGBHnlnuujSJ4orxEdhSykEoAUfJZGEILPpMd
+bphFt/Sn+Eb/TxM5jpKPdwnv8AShNF/1mZU1fWTQq9tRKJUakZj04gdaDFElQXak
+CtTij+GT6yoYCARSHwGO+PC/Pr6q4tc+D7LRjxSBvUWDoFSmlqb/PJ1hj9D/7I2O
+e4XXniAPWMR56KvxHlzOzrNQdJujbJdSkCwh1ZijkSd3y8ayW5WYUTGdRab99NUw
+agzlabe/VVF6kzJ0Scn5q3PihB2Y9Bwo0CKnkYk7a7KT77EWv0Kkq+VHmOtqX3a2
+hhX+b6a6ve9rzJ1qZYGj+obv/C3Sx1LzUjAfqVy7RJDf2uAoP5t2g8u/TkSpUxhM
+VEjZBkSxYZhMyzQM6t8IgkUfnSrIPTHixbDWARZ4beMOBjxyPZK1nP7OOrNR3TkK
+JtwLMQAabURCDnL0PjS0iwBTU4jtumBD1XSULyWuoTvMljrpQr1nV1oDyOt0OLqa
+KA2McWtd9PdXhC8y2EIg7TmrTlJLfHYbdmkiCYj4J49Q8HWkN/6WE+RTUwARAQAB
+tD5BbnRocm9waWMgQ2xhdWRlIENvZGUgUmVsZWFzZSBTaWduaW5nIDxzZWN1cml0
+eUBhbnRocm9waWMuY29tPokCUQQTAQoAOxYhBDHd3iTd+rZ59C170rqpKf8afsrO
+BQJpyu9wAhsPBQsJCAcCAiICBhUKCQgLAgQWAgMBAh4HAheAAAoJELqpKf8afsrO
+l5IP/2I8X1dFy5xYczWB/coIxGjuzS/V6ByZGZZEJsbr04pmuHiFUykJqPGWGQ6q
+U0YF5iEwvEkaagS5m7DzhSEf3FM3Cgafax/6d70tar9Vr1D+w6uPfxetu7u/WYJp
+aolIsdh5fTrBh9zSM1Njl8FM8wG8CwZQjS33Oa7d8cwRkgdUWbt6LXgz+cTQNuBn
+BgW6Ks7oZFI25dfu0ojDR+aDFJg4+4wZoyDLPvJz1SIrJ5WFGs67zsx9SfS3yZnf
+XKmBe+f0dUy+GJ2nFZrXFf99+c0dPEHYO8DCeAHZizjkFrdYtUHdDU0YDYEGkLJa
+bE+pgcpkHf5EvsZzHsyDbl95W/eh7pcXMbwkN+W4CBYUE9X4uHhqzWaC5yAVRWUA
+1BJ9V4LjZfHPLEJt0I3TxzXiEg9/BVeaTYq9RjaxIFo9Nfk158HqJY6SA5jslBlx
+Gv/No8u+xVcze2UJyGVfEIUfm92+0UAIkny3+5cuVV0ICzJxXlXj0CnLM9Lt50wE
+p3suVwuBEviCbZ08eAH1Ht8gbBdSsiOkIU8CX3v/scwHHx5q0+NBL6xLrQObg13a
+tRXBlKObfElkPN3lTUbUnJOW4U8uSjH8VRP+AujKWMDFe7x0zCs+iYY1mTOvbrTS
+9n3CmZUmbynZ+E/QWNENpW/pDNZdWFy43PASmML5FHu4m9Sn
+=oqMI
+-----END PGP PUBLIC KEY BLOCK-----
+eof
+
+copy <<'eof' '/etc/apt/sources.list.d/claude-code.sources'
+Types: deb
+URIs: https://downloads.claude.ai/claude-code/apt/stable
+Suites: stable
+Components: main
+Signed-By: /etc/apt/keyrings/claude-code.asc
+eof
+
+run \
+  --mount=type=cache,id=trixie-apt-cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,id=trixie-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+  <<'eof'
+# install claude-code
+set -o errexit
+
+apt-get update
+
+DEBIAN_FRONTEND=noninteractive \
+apt-get --no-install-recommends --assume-yes install \
+  'claude-code'
+
+eof
+
+copy <<'eof1' '/etc/claude-code/CLAUDE.md'
+# Container environment
+
+You are running in a disposable Podman container (Debian trixie) that the
+`claude-code` launcher script started on the user's machine. The container is
+deleted when the session ends.
+
+- The project directory is mounted from the host at the same path, and
+  `~/.claude` is a persistent volume shared by all projects. Everything else
+  is lost when the session ends, including packages you install and files
+  elsewhere in the home directory.
+- You are the user `claude` and have passwordless `sudo`.
+- There is no Podman or Docker in the container, so the image cannot be built
+  or tested from here.
+- `~/.config/git` is the user's git configuration, mounted read-only.
+
+## Launcher files in the project
+
+Both are in the project root, which is the directory the session started in.
+
+- `.claude-code-image/Containerfile` defines the image for this project. You
+  may create and edit it. The launcher builds it on the host each time a
+  session starts.
+- `.claude-code-container/` is mounted read-only. Its `config` file is sourced
+  by the launcher on the host and holds launcher settings and extra
+  `podman run` options. Only the user can change it.
+
+## When a tool is missing
+
+1. Install it for the current session so that you can continue. For Debian
+   packages run `sudo apt-get update` and then `sudo apt-get install`; the
+   image ships without package lists, so the update is required.
+2. Add it to `.claude-code-image/Containerfile` so that later sessions have
+   it.
+3. Tell the user what you added. It takes effect when they start the next
+   session, so ask them to restart if you could not install it in step 1.
+
+If the Containerfile does not exist yet, create it from the example below and
+then read `.claude-code-container/config`. The launcher builds the
+Containerfile only when `config` sets `claude_code_podman_image_base`, and it
+refuses to start while the Containerfile exists and that variable is unset.
+If the variable is unset or `config` does not exist, ask the user to add this
+line to `.claude-code-container/config` before they start the next session:
+
+```
+claude_code_podman_image_base='claude-code-base'
+```
+
+Once the variable is set, do not delete the Containerfile: the launcher also
+refuses to start when it is missing.
+
+Options for `podman run`, such as published ports, volumes or environment
+variables, can only be set in `config`. When you need one, give the user the
+line to add, for example:
+
+```
+claude_code_podman_args+=(--publish='127.0.0.1:8080:8080')
+```
+
+## Containerfile example
+
+```
+arg claude_code_podman_image_base
+from localhost/${claude_code_podman_image_base}:latest
+
+run \
+  --mount=type=cache,id=trixie-apt-cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,id=trixie-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+  <<'eof'
+# install project packages
+set -o errexit
+
+apt-get update
+
+DEBIAN_FRONTEND=noninteractive \
+apt-get --no-install-recommends --assume-yes install \
+  'netcat-openbsd' \
+  'postgresql-client'
+
+eof
+```
+
+- Keep the first two lines as they are. The launcher passes the name of the
+  base image as a build argument.
+- Build steps run as root, so `sudo` is not needed in the Containerfile.
+- Keep both cache mounts on every step that runs apt. They hold the package
+  lists and downloaded packages between builds.
+- Follow the style of the example: lowercase instructions, one heredoc per
+  `run` step that starts with a comment and `set -o errexit`, and quoted
+  package names, one per line, in alphabetical order.
+- For tools that are not packaged for Debian, add another `run` step in the
+  same style.
+- The build context is `.claude-code-image/`, so files that are copied into
+  the image have to be placed in that directory.
+- Write short text files with a `copy` heredoc, for example
+  `copy <<'eof' '/etc/example.conf'`, instead of placing them in the build
+  context.
+eof1
+
+copy --chmod=440 <<'eof' '/etc/sudoers.d/claude'
+claude ALL=(ALL) NOPASSWD: ALL
+eof
+
+run <<'eof'
+# configure environment
+set -o errexit
+
+groupadd --gid=1000 'claude'
+
+useradd --create-home --gid=1000 --shell='/bin/bash' --uid=1000 'claude'
+
+install --group=1000 --mode=700 --owner=1000 --directory \
+  '/home/claude/.claude' \
+  '/home/claude/.config'
+
+eof
+
+env CLAUDE_CONFIG_DIR='/home/claude/.claude'
+
+env LANG='C.utf8'
+
+entrypoint [ \
+  "claude", \
+  "--dangerously-skip-permissions", \
+  "--settings={\"autoUpdatesChannel\":\"stable\"}" \
+]
+
