@@ -92,10 +92,11 @@ ln --symbolic '/opt/apache-maven-3/bin/mvn' '/usr/local/bin/mvn'
 eof
 
 run <<'eof'
-# create ~/.m2
+# create ~/.gradle and ~/.m2
 set -o errexit
 
 install --group=1000 --mode=700 --owner=1000 --directory \
+  '/home/claude/.gradle' \
   '/home/claude/.m2'
 
 eof

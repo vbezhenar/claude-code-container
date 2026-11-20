@@ -99,8 +99,8 @@ or in the launcher blocks all sessions until it is fixed on the host.
   instruction in a Containerfile cannot name a volume, so with `--rm` it would
   be empty on every launch. A mount point that does not exist in the image is
   created owned by root, which is why the base image pre-creates `~/.claude`
-  and `~/.config` for uid 1000 and the Java base `~/.m2`; do the same for any
-  new mount point in the home directory.
+  and `~/.config` for uid 1000 and the Java base `~/.gradle` and `~/.m2`; do
+  the same for any new mount point in the home directory.
 - **Project image untagged by default.** It is run by the id from
   `--iidfile`, so no naming scheme is needed. The cost is that
   `podman image prune` removes it and the next launch rebuilds it.
