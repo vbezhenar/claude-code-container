@@ -67,6 +67,10 @@ or in the launcher blocks all sessions until it is fixed on the host.
 - The entrypoint, `CLAUDE_CONFIG_DIR` and `LANG` live in the image, not in the
   launcher. `CLAUDE_CONFIG_DIR` points into the volume so that `.claude.json`
   persists as well.
+- The permission mode and the update channel are set in
+  `/etc/claude-code/managed-settings.json`, which the base Containerfile
+  writes, not by flags on the entrypoint. They apply to every `claude`
+  started in the container, including one run from the debug shell.
 - An intermediate base image is a directory next to the launcher that is named
   after the base (for example `claude-code-base-java/`) and whose
   Containerfile starts from `localhost/claude-code-base:latest`.
@@ -120,11 +124,10 @@ or in the launcher blocks all sessions until it is fixed on the host.
 
 ## Security model
 
-The container is the only boundary: Claude runs with
-`--dangerously-skip-permissions` and has sudo. `config` is sourced by bash on
-the host, so anything that can write it gets host code execution at the next
-launch. The rules below were tested with bind mounts in nested mount
-namespaces and are easy to get wrong.
+The container is the only boundary: Claude runs in `bypassPermissions` mode
+and has sudo. `config` is sourced by bash on the host, so anything that can
+write it gets host code execution at the next launch. The rules below were
+tested with bind mounts in nested mount namespaces and are easy to get wrong.
 
 - The read-only mount has to be on a directory that sits directly in the
   project root. A mount on a single file, whether a read-only bind or

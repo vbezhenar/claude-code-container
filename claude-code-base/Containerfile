@@ -197,6 +197,15 @@ eof
   context.
 eof1
 
+copy <<'eof' '/etc/claude-code/managed-settings.json'
+{
+  "autoUpdatesChannel": "stable",
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  }
+}
+eof
+
 copy --chmod=440 <<'eof' '/etc/sudoers.d/claude'
 claude ALL=(ALL) NOPASSWD: ALL
 eof
@@ -219,9 +228,5 @@ env CLAUDE_CONFIG_DIR='/home/claude/.claude'
 
 env LANG='C.utf8'
 
-entrypoint [ \
-  "claude", \
-  "--dangerously-skip-permissions", \
-  "--settings={\"autoUpdatesChannel\":\"stable\"}" \
-]
+entrypoint [ "claude" ]
 
