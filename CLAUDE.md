@@ -140,6 +140,12 @@ launcher blocks all sessions until it is fixed on the host.
   ids are one namespace for every build of the host user, so an id per tool
   would isolate nothing. On the host the cache is
   `/var/tmp/buildah-cache-<uid>/<first 16 hex digits of sha256(id)>`.
+- **hurl is a pinned GitHub release.** Debian does not package it, so the
+  base image unpacks the x86_64 release tarball into `/opt/hurl` and keeps
+  the tarball in the downloads cache. With the tarball in the cache the step
+  makes no request, and nothing announces a new release: to update, change
+  `v`. The binaries load `libxml2` and libcurl at run time: `libxml2` is in
+  the base package list for hurl, and libcurl comes with `curl`.
 
 ## Security model
 
@@ -163,8 +169,9 @@ tested with bind mounts in nested mount namespaces and are easy to get wrong.
   and the files under `rootfs/`. Its build steps run in containers. The
   accepted cost is the weaker build-time isolation and that the shared cache
   mounts are writable from any project's Containerfile: the apt caches and
-  `claude-code-downloads`, whose Maven tarball the Java base unpacks without
-  a checksum.
+  `claude-code-downloads`. The tarballs in the latter are unpacked without a
+  checksum: Maven by the Java base and hurl by the base image, which every
+  project runs.
 - Whether a project image is built at all is decided by
   `claude_code_podman_image_base` in `config`, which the agent cannot change.
   The two refusal checks exist so that a Containerfile is never silently
