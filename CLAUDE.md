@@ -60,15 +60,15 @@ launcher blocks all sessions until it is fixed on the host.
 - The agent instructions in
   `claude-code-base/rootfs/etc/claude-code/CLAUDE.md` (installed as
   `/etc/claude-code/CLAUDE.md`) describe the launcher: file and variable
-  names, the two refusal checks, the two lines a project Containerfile
-  starts with and the `rootfs/` layout. Update them whenever the launcher's
-  behaviour changes. For Containerfile style they point to
+  names, the two refusal checks, that a failed build of the project image
+  stops the launch, the two lines a project Containerfile starts with and
+  the `rootfs/` layout. Update them whenever the launcher's behaviour
+  changes. For Containerfile style they point to
   `/usr/local/share/claude-code-base/Containerfile`, the copy of
-  `claude-code-base/Containerfile` in the image. They name what that file
-  demonstrates (an apt step, hurl as the downloaded tool, the `rootfs/`
-  copies) and what a project must not repeat (removing `docker-clean`, the
-  user, the entrypoint): update those mentions when such a step is removed
-  or replaced.
+  `claude-code-base/Containerfile` in the image, and name two things in it:
+  the cache mounts, and the removal of `docker-clean` as the example of what
+  a project must not repeat. Update those mentions if the base Containerfile
+  loses either.
 - Project Containerfiles depend on the build argument name
   `claude_code_podman_image_base` and on the tag format
   `localhost/<name>:latest`.
@@ -126,6 +126,16 @@ launcher blocks all sessions until it is fixed on the host.
   directory that already exists owned by root and without the skeleton
   files. It is the one file copied from outside `rootfs/`, and its `copy` is
   the last one because the layer changes with every edit of the file.
+- **The agent instructions hold only what an agent has to know in order to
+  act and cannot find out.** They are loaded into every session of every
+  project, and most sessions never touch the image. The launcher is not
+  visible from the container, so its file and variable names, the rule that
+  ties the Containerfile to `claude_code_podman_image_base`, that a failed
+  build stops the launch, the build context and the lines to hand to the
+  user have to be there. What the reference Containerfile shows (step
+  layout, the downloads cache, one `copy` per file), what a failing command
+  reveals by itself (the git configuration from the host is read-only) and
+  the reasons behind the design stay out; the reasons are in this file.
 - **Project mounted at its host path.** Session history in the shared
   `~/.claude` volume is keyed by path, so `--continue` works across
   containers.
