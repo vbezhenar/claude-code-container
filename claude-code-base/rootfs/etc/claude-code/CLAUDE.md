@@ -34,12 +34,13 @@ Both are in the project root, which is the directory the session started in.
 3. Tell the user what you added. It takes effect when they start the next
    session, so ask them to restart if you could not install it in step 1.
 
-If the Containerfile does not exist yet, create it from the example below and
-then read `.claude-code-container/config`. The launcher builds the
-Containerfile only when `config` sets `claude_code_podman_image_base`, and it
-refuses to start while the Containerfile exists and that variable is unset.
-If the variable is unset or `config` does not exist, ask the user to add this
-line to `.claude-code-container/config` before they start the next session:
+If the Containerfile does not exist yet, create it as described under
+"Writing the Containerfile" and then read `.claude-code-container/config`.
+The launcher builds the Containerfile only when `config` sets
+`claude_code_podman_image_base`, and it refuses to start while the
+Containerfile exists and that variable is unset. If the variable is unset or
+`config` does not exist, ask the user to add this line to
+`.claude-code-container/config` before they start the next session:
 
 ```
 claude_code_podman_image_base='claude-code-base'
@@ -56,41 +57,32 @@ line to add, for example:
 claude_code_podman_args+=(--publish='127.0.0.1:8080:8080')
 ```
 
-## Containerfile example
+## Writing the Containerfile
+
+`/usr/local/share/claude-code-base/Containerfile` is the Containerfile of
+`claude-code-base`, the image that every project image is built on. Read it
+before you create or edit `.claude-code-image/Containerfile`. It shows what
+is already installed, and it is the reference for style and approach: the
+layout of a `run` step, an apt step with its cache mounts and package list,
+a tool that Debian does not package (hurl), and files copied from `rootfs/`.
+
+A project Containerfile starts with these two lines in place of the `from`
+line of the base:
 
 ```
 arg claude_code_podman_image_base
 from localhost/${claude_code_podman_image_base}:latest
-
-run \
-  --mount=type=cache,id=trixie-apt-cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,id=trixie-apt-lists,target=/var/lib/apt/lists,sharing=locked \
-  <<'eof'
-# install project packages
-set -o errexit
-
-apt-get update
-
-DEBIAN_FRONTEND=noninteractive \
-apt-get --no-install-recommends --assume-yes install \
-  'netcat-openbsd' \
-  'postgresql-client'
-
-eof
 ```
 
-- Keep the first two lines as they are. The launcher passes the name of the
-  base image as a build argument.
+- Keep the two lines as they are. The launcher passes the name of the base
+  image as a build argument.
+- Add only what the project needs. Do not repeat what the base Containerfile
+  already did, such as removing `docker-clean`, creating the user or setting
+  the entrypoint.
 - Build steps run as root, so `sudo` is not needed in the Containerfile.
-- Keep both cache mounts on every step that runs apt. They hold the package
-  lists and downloaded packages between builds.
-- Follow the style of the example: lowercase instructions, one heredoc per
-  `run` step that starts with a comment and `set -o errexit`, and quoted
-  package names, one per line, in alphabetical order.
-- For tools that are not packaged for Debian, add another `run` step in the
-  same style.
+- Use the cache mounts as the base does, with the same ids: both apt mounts
+  on every step that runs apt, and the downloads mount, with a subdirectory
+  named after the tool, on a step that downloads a file.
 - The build context is `.claude-code-image/`. Keep files for the image in
   `.claude-code-image/rootfs/` at the path they have in the image, and copy
-  each one with its own instruction that sets the mode and names the
-  destination directory, for example
-  `copy --chmod=644 'rootfs/etc/example.conf' '/etc/'`.
+  each one with its own instruction, as the base does.

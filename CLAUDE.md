@@ -60,9 +60,15 @@ launcher blocks all sessions until it is fixed on the host.
 - The agent instructions in
   `claude-code-base/rootfs/etc/claude-code/CLAUDE.md` (installed as
   `/etc/claude-code/CLAUDE.md`) describe the launcher: file and variable
-  names, the two refusal checks, the Containerfile example and the `rootfs/`
-  layout. Update them whenever the launcher's behaviour or the Containerfile
-  style below changes.
+  names, the two refusal checks, the two lines a project Containerfile
+  starts with and the `rootfs/` layout. Update them whenever the launcher's
+  behaviour changes. For Containerfile style they point to
+  `/usr/local/share/claude-code-base/Containerfile`, the copy of
+  `claude-code-base/Containerfile` in the image. They name what that file
+  demonstrates (an apt step, hurl as the downloaded tool, the `rootfs/`
+  copies) and what a project must not repeat (removing `docker-clean`, the
+  user, the entrypoint): update those mentions when such a step is removed
+  or replaced.
 - Project Containerfiles depend on the build argument name
   `claude_code_podman_image_base` and on the tag format
   `localhost/<name>:latest`.
@@ -108,6 +114,18 @@ launcher blocks all sessions until it is fixed on the host.
   gets 440. Each file has its own `copy`, right before the step that needs
   it, so that editing the agent instructions does not rebuild the apt layers
   above them, which a single `copy 'rootfs/' '/'` at the top would.
+- **The base Containerfile is the style reference for agents.** It is copied
+  to `/usr/local/share/claude-code-base/Containerfile`, and the agent
+  instructions refer to it instead of carrying an example. The example
+  cannot drift from the real file, the instructions loaded into every
+  session stay short, and an agent can see what the base installs. Agents
+  imitate what they read there, so the file has to stay exemplary. It is not
+  in `/etc/claude-code/` because that directory belongs to Claude Code, and
+  not in the home directory because a `copy` there would have to stay after
+  the step that creates the user: `useradd --create-home` leaves a home
+  directory that already exists owned by root and without the skeleton
+  files. It is the one file copied from outside `rootfs/`, and its `copy` is
+  the last one because the layer changes with every edit of the file.
 - **Project mounted at its host path.** Session history in the shared
   `~/.claude` volume is keyed by path, so `--continue` works across
   containers.

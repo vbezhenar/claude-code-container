@@ -110,6 +110,8 @@ install --group=1000 --mode=700 --owner=1000 --directory \
 
 eof
 
+copy --chmod=644 'Containerfile' '/usr/local/share/claude-code-base/'
+
 env CLAUDE_CONFIG_DIR='/home/claude/.claude'
 
 env LANG='C.utf8'
