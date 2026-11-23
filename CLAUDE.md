@@ -15,8 +15,8 @@ Sessions that work on this repository run inside the container it produces.
 Nothing can be exercised from inside: there is no Podman, and changes to the
 launcher or the base image only take effect on the user's next launch. The
 base image is rebuilt at the start of every launch in every project and a
-failed build aborts the launch, so a mistake in `claude-code-base/Containerfile`
-or in the launcher blocks all sessions until it is fixed on the host.
+failed build aborts the launch, so a mistake in `claude-code-base/` or in the
+launcher blocks all sessions until it is fixed on the host.
 
 ## Checking changes
 
@@ -34,10 +34,12 @@ or in the launcher blocks all sessions until it is fixed on the host.
 - Containerfile syntax: `buildah` and `netavark` come from this project's
   image (`.claude-code-image/Containerfile`); install them with apt if the
   session runs on the plain base. `sudo buildah --storage-driver=vfs build`
-  handles every instruction except `run` on a `from scratch` image, including
-  `copy` heredocs, so the files they write and the resulting entrypoint can be
-  inspected with `buildah from` and `buildah mount`. `run` steps cannot
-  execute in the nested container; run their shell body directly instead.
+  handles every instruction except `run` on a `from scratch` image. Write
+  `from scratch` and the instructions other than `run` to a scratch file,
+  pass it with `--file` and the image directory as build context, then
+  inspect the copied files, their modes and the entrypoint with
+  `buildah from` and `buildah mount`. `run` steps cannot execute in the
+  nested container; run their shell body directly instead.
 - Launching from `claude-code-base/` or `claude-code-base-java/` uses the
   `config` there, which replaces the entrypoint with `bash`: a debug shell in
   that image. The Java directory is launched as a project on its own base,
@@ -55,12 +57,12 @@ or in the launcher blocks all sessions until it is fixed on the host.
 
 ## Things that have to change together
 
-- The agent instructions embedded in `claude-code-base/Containerfile`
-  (installed as `/etc/claude-code/CLAUDE.md`) describe the launcher: file and
-  variable names, the two refusal checks and the Containerfile example. Update
-  them whenever the launcher's behaviour changes. Their example contains a
-  line that is only `eof`, so the `copy` heredoc wrapping the text needs
-  another delimiter (`eof1`).
+- The agent instructions in
+  `claude-code-base/rootfs/etc/claude-code/CLAUDE.md` (installed as
+  `/etc/claude-code/CLAUDE.md`) describe the launcher: file and variable
+  names, the two refusal checks, the Containerfile example and the `rootfs/`
+  layout. Update them whenever the launcher's behaviour or the Containerfile
+  style below changes.
 - Project Containerfiles depend on the build argument name
   `claude_code_podman_image_base` and on the tag format
   `localhost/<name>:latest`.
@@ -68,9 +70,10 @@ or in the launcher blocks all sessions until it is fixed on the host.
   launcher. `CLAUDE_CONFIG_DIR` points into the volume so that `.claude.json`
   persists as well.
 - The permission mode and the update channel are set in
-  `/etc/claude-code/managed-settings.json`, which the base Containerfile
-  writes, not by flags on the entrypoint. They apply to every `claude`
-  started in the container, including one run from the debug shell.
+  `/etc/claude-code/managed-settings.json`, which the base image copies from
+  `claude-code-base/rootfs/`, not by flags on the entrypoint. They apply to
+  every `claude` started in the container, including one run from the debug
+  shell.
 - An intermediate base image is a directory next to the launcher that is named
   after the base (for example `claude-code-base-java/`) and whose
   Containerfile starts from `localhost/claude-code-base:latest`.
@@ -96,6 +99,15 @@ or in the launcher blocks all sessions until it is fixed on the host.
   Podman's default `missing` applies and the build does not contact the
   registry. A new Debian image rebuilds every layer whatever the cache age,
   because the parent changed.
+- **Image files live in `rootfs/` and every `copy` sets the mode.** A `copy`
+  from the build context keeps the mode the file has in the checkout, and git
+  records only the executable bit. Without `--chmod` the image would depend
+  on the umask of the checkout: with mode 600 `_apt` cannot read the
+  repository keys and uid 1000 cannot read `/etc/claude-code/`. sudo accepts
+  a sudoers file with mode 644, but `visudo --check` reports it, so that one
+  gets 440. Each file has its own `copy`, right before the step that needs
+  it, so that editing the agent instructions does not rebuild the apt layers
+  above them, which a single `copy 'rootfs/' '/'` at the top would.
 - **Project mounted at its host path.** Session history in the shared
   `~/.claude` volume is keyed by path, so `--continue` works across
   containers.
@@ -140,11 +152,11 @@ tested with bind mounts in nested mount namespaces and are easy to get wrong.
 - The directory is created and mounted on every launch, even when the project
   has no `config`, so the agent never gets the chance to create it.
 - `.claude-code-image/` is deliberately neither created nor mounted by the
-  launcher and stays writable, so the agent can maintain the Containerfile.
-  Its build steps run in containers. The accepted cost is the weaker
-  build-time isolation and that the shared cache mounts are writable from any
-  project's Containerfile: the apt caches and `maven-cache`, whose tarball
-  the Java base unpacks without a checksum.
+  launcher and stays writable, so the agent can maintain the Containerfile
+  and the files under `rootfs/`. Its build steps run in containers. The
+  accepted cost is the weaker build-time isolation and that the shared cache
+  mounts are writable from any project's Containerfile: the apt caches and
+  `maven-cache`, whose tarball the Java base unpacks without a checksum.
 - Whether a project image is built at all is decided by
   `claude_code_podman_image_base` in `config`, which the agent cannot change.
   The two refusal checks exist so that a Containerfile is never silently
@@ -173,11 +185,12 @@ Do not fix these unprompted.
 ## Style
 
 - Containerfiles: lowercase instructions; every `run` step is a heredoc that
-  starts with a comment and `set -o errexit`; text files are written with
-  `copy <<'eof' '/path'` heredocs (plus `--chmod` when the mode matters)
-  rather than taken from the build context; a heredoc whose text contains an
-  `eof` line uses `eof1`; apt steps carry both cache mounts; package names are
-  quoted, one per line, in alphabetical order.
+  starts with a comment and `set -o errexit`; files for the image are kept
+  under `rootfs/` at the path they have in the image and copied one per
+  instruction, with an explicit mode and the directory as destination,
+  `copy --chmod=644 'rootfs/etc/x' '/etc/'`, right before the step that
+  needs them; apt steps carry both cache mounts; package names are quoted,
+  one per line, in alphabetical order.
 - Shell: long option names, single quotes for literals, `${var}` with braces,
   `[ ]` tests.
 - An instruction in JSON-array form that spans lines needs `\` continuations,

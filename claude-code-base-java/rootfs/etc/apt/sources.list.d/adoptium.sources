@@ -1,0 +1,5 @@
+Types: deb
+URIs: https://packages.adoptium.net/artifactory/deb
+Suites: trixie
+Components: main
+Signed-By: /etc/apt/keyrings/adoptium.asc
