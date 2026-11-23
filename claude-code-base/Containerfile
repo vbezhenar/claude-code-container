@@ -21,7 +21,6 @@ apt-get --no-install-recommends --assume-yes install \
   'git' \
   'iproute2' \
   'jq' \
-  'libxml2' \
   'openssh-client' \
   'pkgconf' \
   'poppler-utils' \
@@ -64,6 +63,8 @@ apt-get --no-install-recommends --assume-yes install \
 eof
 
 run \
+  --mount=type=cache,id=trixie-apt-cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,id=trixie-apt-lists,target=/var/lib/apt/lists,sharing=locked \
   --mount=type=cache,id=claude-code-downloads,target=/tmp/downloads,sharing=locked \
   <<'eof'
 # install hurl
@@ -71,7 +72,7 @@ set -o errexit
 set -o nounset
 
 v='8.1.0'
-f="hurl-${v}-x86_64-unknown-linux-gnu.tar.gz"
+f="hurl_${v}_amd64.deb"
 u="https://github.com/Orange-OpenSource/hurl/releases/download/${v}/${f}"
 
 if [ ! -e "/tmp/downloads/hurl/${f}" ]; then
@@ -81,16 +82,11 @@ if [ ! -e "/tmp/downloads/hurl/${f}" ]; then
   mv "/tmp/downloads/hurl/_${f}" "/tmp/downloads/hurl/${f}"
 fi
 
-mkdir '/opt/hurl'
+apt-get update
 
-tar --extract \
-  --file="/tmp/downloads/hurl/${f}" \
-  --no-same-owner --no-same-permissions --gzip \
-  --strip-components=1 \
-  --directory='/opt/hurl'
-
-ln --symbolic '/opt/hurl/bin/hurl' '/usr/local/bin/hurl'
-ln --symbolic '/opt/hurl/bin/hurlfmt' '/usr/local/bin/hurlfmt'
+DEBIAN_FRONTEND=noninteractive \
+apt-get --no-install-recommends --assume-yes install \
+  "/tmp/downloads/hurl/${f}"
 
 eof
 
