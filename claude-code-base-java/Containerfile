@@ -22,7 +22,7 @@ apt-get --no-install-recommends --assume-yes satisfy \
 eof
 
 run \
-  --mount=type=cache,id=maven-cache,target=/tmp/maven-cache,sharing=locked \
+  --mount=type=cache,id=claude-code-downloads,target=/tmp/downloads,sharing=locked \
   <<'eof'
 # install maven
 set -o errexit
@@ -32,19 +32,20 @@ v='3.10.2'
 f="apache-maven-${v}-bin.tar.gz"
 u="https://dlcdn.apache.org/maven/maven-3/${v}/binaries/${f}"
 
-if [ -e "/tmp/maven-cache/${f}" ]; then
+if [ -e "/tmp/downloads/maven/${f}" ]; then
   curl --fail --head --location --show-error --silent \
     --output '/dev/null' "${u}"
 else
+  mkdir --parents '/tmp/downloads/maven'
   curl --fail --location --show-error --silent \
-    --output "/tmp/maven-cache/_${f}" "${u}"
-  mv "/tmp/maven-cache/_${f}" "/tmp/maven-cache/${f}"
+    --output "/tmp/downloads/maven/_${f}" "${u}"
+  mv "/tmp/downloads/maven/_${f}" "/tmp/downloads/maven/${f}"
 fi
 
 mkdir '/opt/apache-maven-3'
 
 tar --extract \
-  --file="/tmp/maven-cache/${f}" \
+  --file="/tmp/downloads/maven/${f}" \
   --no-same-owner --no-same-permissions --gzip \
   --strip-components=1 \
   --directory='/opt/apache-maven-3'

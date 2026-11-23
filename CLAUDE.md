@@ -130,9 +130,16 @@ launcher blocks all sessions until it is fixed on the host.
   pinned one the step fails with a 404 and Java projects stop launching until
   `v` is bumped. That failure is the update notice: do not switch to
   `archive.apache.org` or let the cached tarball skip the request. With the
-  tarball in the `maven-cache` mount the step sends a `HEAD` request for the
+  tarball in the downloads cache the step sends a `HEAD` request for the
   same URL instead of downloading again. The check runs when the layer is
   rebuilt, which is after each rebuild of the base.
+- **One cache mount for all downloaded files.** A step that downloads a tool
+  mounts `id=claude-code-downloads` at `/tmp/downloads` with `sharing=locked`
+  and keeps its files in a subdirectory named after the tool, which the step
+  creates itself: a cache mount cannot be limited to a subdirectory. Cache
+  ids are one namespace for every build of the host user, so an id per tool
+  would isolate nothing. On the host the cache is
+  `/var/tmp/buildah-cache-<uid>/<first 16 hex digits of sha256(id)>`.
 
 ## Security model
 
@@ -156,7 +163,8 @@ tested with bind mounts in nested mount namespaces and are easy to get wrong.
   and the files under `rootfs/`. Its build steps run in containers. The
   accepted cost is the weaker build-time isolation and that the shared cache
   mounts are writable from any project's Containerfile: the apt caches and
-  `maven-cache`, whose tarball the Java base unpacks without a checksum.
+  `claude-code-downloads`, whose Maven tarball the Java base unpacks without
+  a checksum.
 - Whether a project image is built at all is decided by
   `claude_code_podman_image_base` in `config`, which the agent cannot change.
   The two refusal checks exist so that a Containerfile is never silently
